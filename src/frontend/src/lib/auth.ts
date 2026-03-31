@@ -8,6 +8,7 @@ export interface UserAccount {
   bkash: string; // bKash number
   password: string;
   createdAt: number;
+  photo?: string; // base64 data URL
 }
 
 export const getUsername = (): string | null =>
@@ -27,6 +28,7 @@ function migrateUser(raw: any): UserAccount {
       bkash: raw.bkash ?? "",
       password: raw.password,
       createdAt: raw.createdAt,
+      photo: raw.photo ?? "",
     };
   }
   return {
@@ -36,6 +38,7 @@ function migrateUser(raw: any): UserAccount {
     bkash: raw.bkash ?? "",
     password: raw.password,
     createdAt: raw.createdAt,
+    photo: raw.photo ?? "",
   };
 }
 
@@ -74,6 +77,7 @@ export function registerUser(
     bkash: "",
     password,
     createdAt: Date.now(),
+    photo: "",
   });
   saveUsers(users);
   return "ok";
@@ -103,7 +107,7 @@ export function getDisplayName(identifier: string): string {
 
 export function updateUserProfile(
   identifier: string,
-  data: { name?: string; phone?: string; bkash?: string },
+  data: { name?: string; phone?: string; bkash?: string; photo?: string },
 ): void {
   const users = getUsers();
   const idx = users.findIndex(
@@ -115,6 +119,7 @@ export function updateUserProfile(
   if (data.name !== undefined) users[idx].name = data.name;
   if (data.phone !== undefined) users[idx].phone = data.phone;
   if (data.bkash !== undefined) users[idx].bkash = data.bkash;
+  if (data.photo !== undefined) users[idx].photo = data.photo;
   saveUsers(users);
 }
 

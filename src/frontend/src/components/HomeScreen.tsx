@@ -31,6 +31,7 @@ interface Props {
   username: string | null;
   onLogout: () => void;
   onOpenProfile: () => void;
+  profilePhoto?: string;
 }
 
 const categoryGradients = [
@@ -62,6 +63,7 @@ export default function HomeScreen({
   username,
   onLogout,
   onOpenProfile,
+  profilePhoto,
 }: Props) {
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,11 +122,19 @@ export default function HomeScreen({
                   playClick();
                   onOpenProfile();
                 }}
-                className="flex items-center gap-1.5 bg-secondary border border-border rounded-full px-3 py-1 hover:border-primary/60 transition-colors"
+                className="flex items-center gap-1.5 bg-secondary border border-border rounded-full px-2 py-1 hover:border-primary/60 transition-colors"
                 title="প্রোফাইল দেখুন"
                 data-ocid="home.button"
               >
-                <User size={12} className="text-accent" />
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt="profile"
+                    className="w-6 h-6 rounded-full object-cover border border-primary/40"
+                  />
+                ) : (
+                  <User size={12} className="text-accent" />
+                )}
                 <span className="text-xs font-display text-accent">
                   {getDisplayName(username)}
                 </span>

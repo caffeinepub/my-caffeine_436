@@ -13,7 +13,12 @@ import ResultsScreen from "./components/ResultsScreen";
 import WalletModal from "./components/WalletModal";
 import { useActor } from "./hooks/useActor";
 import { useGetQuestionsByCategoryAndLanguage } from "./hooks/useQueries";
-import { clearUsername, getUsername, setUsername } from "./lib/auth";
+import {
+  clearUsername,
+  getUserProfile,
+  getUsername,
+  setUsername,
+} from "./lib/auth";
 import type { Lang } from "./lib/i18n";
 import { applyQuizResult } from "./lib/quizStats";
 import {
@@ -44,6 +49,11 @@ export default function App() {
     "deposit" | "withdraw" | "history" | null
   >(null);
   const [initialized, setInitialized] = useState(false);
+  const [profilePhoto, setProfilePhoto] = useState<string>(() => {
+    const u = getUsername();
+    if (!u) return "";
+    return getUserProfile(u)?.photo ?? "";
+  });
 
   const isLoggedIn = !!username;
 
@@ -69,11 +79,13 @@ export default function App() {
   const handleLogin = (u: string) => {
     setUsername(u);
     setUsernameState(u);
+    setProfilePhoto(getUserProfile(u)?.photo ?? "");
   };
 
   const handleLogout = () => {
     clearUsername();
     setUsernameState(null);
+    setProfilePhoto("");
     setScreen("home");
   };
 
@@ -92,7 +104,6 @@ export default function App() {
     setFinalScore(score);
     setFinalTotal(total);
     setFinalWrong(wrongCount);
-    // Apply balance changes
     const { earned, deducted } = applyQuizResult(
       username ?? "guest",
       score,
@@ -156,6 +167,7 @@ export default function App() {
             username={username}
             onLogout={handleLogout}
             onOpenProfile={() => setProfileOpen(true)}
+            profilePhoto={profilePhoto}
           />
         )}
         {screen === "quiz" && (
@@ -245,6 +257,7 @@ export default function App() {
         open={profileOpen}
         onClose={() => setProfileOpen(false)}
         identifier={username ?? ""}
+        onPhotoChange={setProfilePhoto}
       />
 
       <InstallBanner />
