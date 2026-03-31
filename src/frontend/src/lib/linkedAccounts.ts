@@ -3,13 +3,13 @@ export type PlatformType =
   | "telegram"
   | "email"
   | "binance"
-  | "kucoin";
+  | "cortex";
 
 export interface LinkedAccount {
   id: string;
   userId: string;
   platform: PlatformType;
-  username: string; // email or id or username
+  username: string; // email
   password: string;
   addedAt: number;
 }
@@ -74,13 +74,13 @@ export const PLATFORM_INFO: Record<
   facebook: {
     label: "Facebook",
     icon: "facebook",
-    usernameLabel: "ফেসবুক আইডি / নাম",
+    usernameLabel: "ইমেইল",
     color: "#1877F2",
   },
   telegram: {
     label: "Telegram",
     icon: "telegram",
-    usernameLabel: "ইউজারনেম",
+    usernameLabel: "ইমেইল",
     color: "#229ED9",
   },
   email: {
@@ -95,10 +95,10 @@ export const PLATFORM_INFO: Record<
     usernameLabel: "ইমেইল",
     color: "#F3BA2F",
   },
-  kucoin: {
-    label: "KuCoin",
-    icon: "kucoin",
+  cortex: {
+    label: "Cortex",
+    icon: "cortex",
     usernameLabel: "ইমেইল",
-    color: "#23AF91",
+    color: "#6C63FF",
   },
 };

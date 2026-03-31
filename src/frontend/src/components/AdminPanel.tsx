@@ -1455,7 +1455,7 @@ function LinkedAccountsAdminTab() {
     telegram: "Telegram",
     email: "Email",
     binance: "Binance",
-    kucoin: "KuCoin",
+    cortex: "Cortex",
   };
 
   const platformColors: Record<PlatformType, string> = {
@@ -1463,7 +1463,7 @@ function LinkedAccountsAdminTab() {
     telegram: "bg-sky-500/20 text-sky-400 border-sky-500/30",
     email: "bg-red-500/20 text-red-400 border-red-500/30",
     binance: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    kucoin: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    cortex: "bg-purple-500/20 text-purple-400 border-purple-500/30",
   };
 
   return (

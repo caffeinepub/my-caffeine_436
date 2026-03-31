@@ -23,7 +23,7 @@ const platforms: PlatformType[] = [
   "telegram",
   "email",
   "binance",
-  "kucoin",
+  "cortex",
 ];
 
 function FacebookIcon() {
@@ -98,26 +98,55 @@ function BinanceIcon() {
   );
 }
 
-function KuCoinIcon() {
+function CortexIcon() {
   return (
-    <svg
-      aria-label="KuCoin"
-      role="img"
-      viewBox="0 0 24 24"
-      fill="#23AF91"
-      className="w-8 h-8"
-    >
-      <circle cx="12" cy="12" r="12" fill="#23AF91" />
-      <text
-        x="12"
-        y="16"
-        textAnchor="middle"
-        fill="white"
-        fontSize="9"
-        fontWeight="bold"
-      >
-        KCS
-      </text>
+    <svg aria-label="Cortex" role="img" viewBox="0 0 24 24" className="w-8 h-8">
+      <circle cx="12" cy="12" r="12" fill="#6C63FF" />
+      <circle
+        cx="12"
+        cy="12"
+        r="5"
+        fill="none"
+        stroke="white"
+        strokeWidth="1.5"
+      />
+      <circle cx="12" cy="12" r="2" fill="white" />
+      <line
+        x1="12"
+        y1="3"
+        x2="12"
+        y2="7"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="12"
+        y1="17"
+        x2="12"
+        y2="21"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="3"
+        y1="12"
+        x2="7"
+        y2="12"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1="17"
+        y1="12"
+        x2="21"
+        y2="12"
+        stroke="white"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -127,7 +156,7 @@ const PlatformIcons: Record<PlatformType, React.FC> = {
   telegram: TelegramIcon,
   email: EmailIcon,
   binance: BinanceIcon,
-  kucoin: KuCoinIcon,
+  cortex: CortexIcon,
 };
 
 interface AddAccountModalProps {
@@ -144,19 +173,19 @@ function AddAccountModal({
   onSuccess,
 }: AddAccountModalProps) {
   const info = PLATFORM_INFO[platform];
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const Icon = PlatformIcons[platform];
 
   const handleSubmit = () => {
-    if (!username.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       setError("সব তথ্য পূরণ করুন");
       return;
     }
     setLoading(true);
-    const result = linkAccount(userId, platform, username.trim(), password);
+    const result = linkAccount(userId, platform, email.trim(), password);
     if (result.success) {
       deposit(BONUS_AMOUNT);
       onSuccess();
@@ -198,16 +227,17 @@ function AddAccountModal({
         <div className="space-y-3">
           <div>
             <label
-              htmlFor="linked-username"
+              htmlFor="linked-email"
               className="text-xs text-muted-foreground mb-1 block"
             >
-              {info.usernameLabel}
+              ইমেইল
             </label>
             <Input
-              id="linked-username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder={`${info.usernameLabel} লিখুন`}
+              id="linked-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ইমেইল লিখুন"
               className="font-sans"
             />
           </div>
