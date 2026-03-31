@@ -69,7 +69,7 @@ import {
 import { SAMPLE_QUESTIONS } from "../lib/sampleQuestions";
 import { getTransactions } from "../lib/wallet";
 
-const ADMIN_PASSWORD = "admin123";
+const ADMIN_PASSWORD = "hmukta2436";
 const STRIPE_KEY_STORAGE = "stripePublishableKey";
 
 interface Props {
@@ -1438,7 +1438,7 @@ function SettingsTab() {
         <div className="text-xs text-muted-foreground space-y-1">
           <p>
             🔐 এডমিন পাসওয়ার্ড:{" "}
-            <span className="font-mono text-foreground">admin123</span>
+            <span className="font-mono text-foreground">hmukta2436</span>
           </p>
           <p>🎮 প্রতি ৮ সঠিক = +৳১০ বোনাস</p>
           <p>❌ প্রতি ভুল = -৳২ কাটা</p>
