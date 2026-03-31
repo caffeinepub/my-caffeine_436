@@ -1,0 +1,149 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "BricolageGrotesque";
+  src: url("/assets/fonts/BricolageGrotesque.woff2") format("woff2");
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Figtree";
+  src: url("/assets/fonts/Figtree.woff2") format("woff2");
+  font-weight: 300 900;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Dark gaming theme - deep indigo/purple */
+    --background: 0.14 0.04 278;
+    --foreground: 0.96 0.01 278;
+    --card: 0.2 0.05 278;
+    --card-foreground: 0.96 0.01 278;
+    --popover: 0.24 0.06 278;
+    --popover-foreground: 0.96 0.01 278;
+    --primary: 0.62 0.24 278;
+    --primary-foreground: 0.98 0 0;
+    --secondary: 0.26 0.06 278;
+    --secondary-foreground: 0.96 0.01 278;
+    --muted: 0.22 0.04 278;
+    --muted-foreground: 0.68 0.04 278;
+    --accent: 0.75 0.18 193;
+    --accent-foreground: 0.12 0.03 278;
+    --destructive: 0.62 0.24 25;
+    --destructive-foreground: 0.98 0 0;
+    --border: 0.3 0.06 278;
+    --input: 0.26 0.06 278;
+    --ring: 0.62 0.24 278;
+
+    /* Custom game tokens */
+    --neon-teal: 0.75 0.18 193;
+    --neon-orange: 0.72 0.2 52;
+    --neon-pink: 0.65 0.22 328;
+    --neon-green: 0.72 0.2 142;
+    --neon-purple: 0.62 0.24 278;
+    --gold: 0.8 0.18 70;
+    --silver: 0.75 0.04 250;
+    --bronze: 0.68 0.14 48;
+
+    --chart-1: 0.75 0.18 193;
+    --chart-2: 0.72 0.2 52;
+    --chart-3: 0.65 0.22 328;
+    --chart-4: 0.72 0.2 142;
+    --chart-5: 0.62 0.24 278;
+    --sidebar: 0.18 0.05 278;
+    --sidebar-foreground: 0.96 0.01 278;
+    --sidebar-primary: 0.62 0.24 278;
+    --sidebar-primary-foreground: 0.98 0 0;
+    --sidebar-accent: 0.26 0.06 278;
+    --sidebar-accent-foreground: 0.96 0.01 278;
+    --sidebar-border: 0.3 0.06 278;
+    --sidebar-ring: 0.62 0.24 278;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body;
+    color-scheme: dark;
+  }
+
+  html {
+    color-scheme: dark;
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: "BricolageGrotesque", sans-serif;
+  }
+  .font-body {
+    font-family: "Figtree", sans-serif;
+  }
+  .neon-glow-teal {
+    box-shadow: 0 0 20px oklch(0.75 0.18 193 / 40%), 0 0 40px
+      oklch(0.75 0.18 193 / 20%);
+  }
+  .neon-glow-orange {
+    box-shadow: 0 0 20px oklch(0.72 0.2 52 / 40%), 0 0 40px
+      oklch(0.72 0.2 52 / 20%);
+  }
+  .neon-glow-pink {
+    box-shadow: 0 0 20px oklch(0.65 0.22 328 / 40%), 0 0 40px
+      oklch(0.65 0.22 328 / 20%);
+  }
+  .neon-glow-green {
+    box-shadow: 0 0 20px oklch(0.72 0.2 142 / 40%), 0 0 40px
+      oklch(0.72 0.2 142 / 20%);
+  }
+  .neon-glow-purple {
+    box-shadow: 0 0 20px oklch(0.62 0.24 278 / 50%), 0 0 40px
+      oklch(0.62 0.24 278 / 25%);
+  }
+  .text-neon-teal {
+    color: oklch(var(--neon-teal));
+  }
+  .text-neon-orange {
+    color: oklch(var(--neon-orange));
+  }
+  .text-neon-pink {
+    color: oklch(var(--neon-pink));
+  }
+  .text-neon-green {
+    color: oklch(var(--neon-green));
+  }
+  .bg-neon-teal {
+    background-color: oklch(var(--neon-teal));
+  }
+  .bg-neon-orange {
+    background-color: oklch(var(--neon-orange));
+  }
+  .bg-neon-pink {
+    background-color: oklch(var(--neon-pink));
+  }
+  .bg-neon-green {
+    background-color: oklch(var(--neon-green));
+  }
+  .bg-neon-purple {
+    background-color: oklch(var(--neon-purple));
+  }
+  .border-neon-teal {
+    border-color: oklch(var(--neon-teal));
+  }
+  .border-neon-orange {
+    border-color: oklch(var(--neon-orange));
+  }
+  .border-neon-pink {
+    border-color: oklch(var(--neon-pink));
+  }
+  .border-neon-green {
+    border-color: oklch(var(--neon-green));
+  }
+}
