@@ -2,7 +2,10 @@ const USERS_KEY = "quizUsers";
 const LOGGED_IN_KEY = "quizUsername";
 
 export interface UserAccount {
-  username: string;
+  email: string; // primary identifier (email or phone)
+  phone: string; // optional extra phone
+  name: string; // display name
+  bkash: string; // bKash number
   password: string;
   createdAt: number;
 }
@@ -14,9 +17,32 @@ export const setUsername = (u: string) =>
 export const clearUsername = () => localStorage.removeItem(LOGGED_IN_KEY);
 export const isLoggedIn = (): boolean => !!localStorage.getItem(LOGGED_IN_KEY);
 
+function migrateUser(raw: any): UserAccount {
+  // backward-compat: old accounts had { username, password, createdAt }
+  if (raw.username && !raw.email) {
+    return {
+      email: raw.username,
+      phone: raw.phone ?? "",
+      name: raw.name ?? "",
+      bkash: raw.bkash ?? "",
+      password: raw.password,
+      createdAt: raw.createdAt,
+    };
+  }
+  return {
+    email: raw.email ?? "",
+    phone: raw.phone ?? "",
+    name: raw.name ?? "",
+    bkash: raw.bkash ?? "",
+    password: raw.password,
+    createdAt: raw.createdAt,
+  };
+}
+
 function getUsers(): UserAccount[] {
   try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    const raw: any[] = JSON.parse(localStorage.getItem(USERS_KEY) || "[]");
+    return raw.map(migrateUser);
   } catch {
     return [];
   }
@@ -29,33 +55,87 @@ function saveUsers(users: UserAccount[]): void {
 export type RegisterResult = "ok" | "usernameExists" | "invalidInput";
 
 export function registerUser(
-  username: string,
+  identifier: string,
   password: string,
 ): RegisterResult {
-  const trimmed = username.trim();
-  if (trimmed.length < 3 || password.length < 4) return "invalidInput";
+  const trimmed = identifier.trim();
+  if (trimmed.length < 5 || password.length < 4) return "invalidInput";
   const users = getUsers();
-  if (users.find((u) => u.username.toLowerCase() === trimmed.toLowerCase()))
-    return "usernameExists";
-  users.push({ username: trimmed, password, createdAt: Date.now() });
+  const exists = users.find(
+    (u) =>
+      u.email.toLowerCase() === trimmed.toLowerCase() ||
+      (u.phone && u.phone === trimmed),
+  );
+  if (exists) return "usernameExists";
+  users.push({
+    email: trimmed,
+    phone: "",
+    name: "",
+    bkash: "",
+    password,
+    createdAt: Date.now(),
+  });
   saveUsers(users);
   return "ok";
 }
 
-export function loginUser(username: string, password: string): boolean {
-  const trimmed = username.trim();
+export function loginUser(identifier: string, password: string): boolean {
+  const trimmed = identifier.trim();
   const users = getUsers();
   const user = users.find(
-    (u) => u.username.toLowerCase() === trimmed.toLowerCase(),
+    (u) =>
+      u.email.toLowerCase() === trimmed.toLowerCase() ||
+      (u.phone && u.phone === trimmed),
   );
   return !!user && user.password === password;
+}
+
+export function getDisplayName(identifier: string): string {
+  const users = getUsers();
+  const user = users.find(
+    (u) =>
+      u.email.toLowerCase() === identifier.toLowerCase() ||
+      u.phone === identifier,
+  );
+  if (user?.name) return user.name;
+  return identifier;
+}
+
+export function updateUserProfile(
+  identifier: string,
+  data: { name?: string; phone?: string; bkash?: string },
+): void {
+  const users = getUsers();
+  const idx = users.findIndex(
+    (u) =>
+      u.email.toLowerCase() === identifier.toLowerCase() ||
+      u.phone === identifier,
+  );
+  if (idx === -1) return;
+  if (data.name !== undefined) users[idx].name = data.name;
+  if (data.phone !== undefined) users[idx].phone = data.phone;
+  if (data.bkash !== undefined) users[idx].bkash = data.bkash;
+  saveUsers(users);
+}
+
+export function getUserProfile(identifier: string): UserAccount | null {
+  const users = getUsers();
+  return (
+    users.find(
+      (u) =>
+        u.email.toLowerCase() === identifier.toLowerCase() ||
+        u.phone === identifier,
+    ) ?? null
+  );
 }
 
 export function getAllUsers(): UserAccount[] {
   return getUsers();
 }
 
-export function deleteUser(username: string): void {
-  const users = getUsers().filter((u) => u.username !== username);
+export function deleteUser(identifier: string): void {
+  const users = getUsers().filter(
+    (u) => u.email !== identifier && u.phone !== identifier,
+  );
   saveUsers(users);
 }

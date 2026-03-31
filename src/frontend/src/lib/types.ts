@@ -1,7 +1,10 @@
 // Local type definitions
 
 export interface UserAccount {
-  username: string;
+  email: string;
+  phone: string;
+  name: string;
+  bkash: string;
   password: string;
   createdAt: number;
 }

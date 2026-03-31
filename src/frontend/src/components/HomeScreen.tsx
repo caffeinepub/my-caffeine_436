@@ -10,6 +10,7 @@ import {
 import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useGetActiveNotices, useGetActivePosts } from "../hooks/useQueries";
+import { getDisplayName } from "../lib/auth";
 import { CATEGORIES, type Lang, getCategoryLabel, t } from "../lib/i18n";
 import { playClick } from "../lib/sounds";
 import LinkedAccountsSection from "./LinkedAccountsSection";
@@ -29,6 +30,7 @@ interface Props {
   onHistory: () => void;
   username: string | null;
   onLogout: () => void;
+  onOpenProfile: () => void;
 }
 
 const categoryGradients = [
@@ -59,6 +61,7 @@ export default function HomeScreen({
   onHistory,
   username,
   onLogout,
+  onOpenProfile,
 }: Props) {
   const tapCount = useRef(0);
   const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -111,12 +114,21 @@ export default function HomeScreen({
         <div className="flex items-center gap-2">
           {username ? (
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 bg-secondary border border-border rounded-full px-3 py-1">
+              <button
+                type="button"
+                onClick={() => {
+                  playClick();
+                  onOpenProfile();
+                }}
+                className="flex items-center gap-1.5 bg-secondary border border-border rounded-full px-3 py-1 hover:border-primary/60 transition-colors"
+                title="প্রোফাইল দেখুন"
+                data-ocid="home.button"
+              >
                 <User size={12} className="text-accent" />
                 <span className="text-xs font-display text-accent">
-                  {username}
+                  {getDisplayName(username)}
                 </span>
-              </div>
+              </button>
               <button
                 type="button"
                 onClick={() => {

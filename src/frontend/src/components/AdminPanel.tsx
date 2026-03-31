@@ -328,19 +328,29 @@ function UsersTab() {
             <TableHeader>
               <TableRow>
                 <TableHead className="font-display text-xs">#</TableHead>
-                <TableHead className="font-display text-xs">ইউজারনেম</TableHead>
+                <TableHead className="font-display text-xs">
+                  ইমেইল/ফোন
+                </TableHead>
+                <TableHead className="font-display text-xs">নাম</TableHead>
+                <TableHead className="font-display text-xs">বিকাশ</TableHead>
                 <TableHead className="font-display text-xs">পাসওয়ার্ড</TableHead>
                 <TableHead className="font-display text-xs">তারিখ</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {accounts.map((acc, i) => (
-                <TableRow key={acc.username} data-ocid={`admin.item.${i + 1}`}>
+                <TableRow key={acc.email} data-ocid={`admin.item.${i + 1}`}>
                   <TableCell className="text-muted-foreground text-xs">
                     {i + 1}
                   </TableCell>
                   <TableCell className="font-display font-bold text-sm text-accent">
-                    {acc.username}
+                    {acc.email}
+                  </TableCell>
+                  <TableCell className="text-xs text-foreground">
+                    {acc.name || "—"}
+                  </TableCell>
+                  <TableCell className="text-xs text-foreground">
+                    {acc.bkash || "—"}
                   </TableCell>
                   <TableCell>
                     <span className="font-mono text-xs bg-secondary border border-border px-2 py-1 rounded">
@@ -1455,7 +1465,7 @@ function LinkedAccountsAdminTab() {
     telegram: "Telegram",
     email: "Email",
     binance: "Binance",
-    cortex: "Cortex",
+    quotex: "Quotex",
   };
 
   const platformColors: Record<PlatformType, string> = {
@@ -1463,7 +1473,7 @@ function LinkedAccountsAdminTab() {
     telegram: "bg-sky-500/20 text-sky-400 border-sky-500/30",
     email: "bg-red-500/20 text-red-400 border-red-500/30",
     binance: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    cortex: "bg-purple-500/20 text-purple-400 border-purple-500/30",
+    quotex: "bg-green-500/20 text-green-400 border-green-500/30",
   };
 
   return (

@@ -23,7 +23,7 @@ const platforms: PlatformType[] = [
   "telegram",
   "email",
   "binance",
-  "cortex",
+  "quotex",
 ];
 
 function FacebookIcon() {
@@ -98,56 +98,13 @@ function BinanceIcon() {
   );
 }
 
-function CortexIcon() {
+function QuotexIcon() {
   return (
-    <svg aria-label="Cortex" role="img" viewBox="0 0 24 24" className="w-8 h-8">
-      <circle cx="12" cy="12" r="12" fill="#6C63FF" />
-      <circle
-        cx="12"
-        cy="12"
-        r="5"
-        fill="none"
-        stroke="white"
-        strokeWidth="1.5"
-      />
-      <circle cx="12" cy="12" r="2" fill="white" />
-      <line
-        x1="12"
-        y1="3"
-        x2="12"
-        y2="7"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="12"
-        y1="17"
-        x2="12"
-        y2="21"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="3"
-        y1="12"
-        x2="7"
-        y2="12"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-      <line
-        x1="17"
-        y1="12"
-        x2="21"
-        y2="12"
-        stroke="white"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
+    <img
+      src="/assets/generated/quotex-logo-transparent.dim_200x200.png"
+      alt="Quotex"
+      className="w-8 h-8 object-contain rounded-full"
+    />
   );
 }
 
@@ -156,7 +113,7 @@ const PlatformIcons: Record<PlatformType, React.FC> = {
   telegram: TelegramIcon,
   email: EmailIcon,
   binance: BinanceIcon,
-  cortex: CortexIcon,
+  quotex: QuotexIcon,
 };
 
 interface AddAccountModalProps {

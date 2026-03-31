@@ -3,7 +3,7 @@ export type PlatformType =
   | "telegram"
   | "email"
   | "binance"
-  | "cortex";
+  | "quotex";
 
 export interface LinkedAccount {
   id: string;
@@ -95,10 +95,10 @@ export const PLATFORM_INFO: Record<
     usernameLabel: "ইমেইল",
     color: "#F3BA2F",
   },
-  cortex: {
-    label: "Cortex",
-    icon: "cortex",
+  quotex: {
+    label: "Quotex",
+    icon: "quotex",
     usernameLabel: "ইমেইল",
-    color: "#6C63FF",
+    color: "#00C853",
   },
 };

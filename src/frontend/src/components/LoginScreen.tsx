@@ -6,12 +6,12 @@ import { useState } from "react";
 import { loginUser, registerUser } from "../lib/auth";
 
 interface Props {
-  onLogin: (username: string) => void;
+  onLogin: (identifier: string) => void;
 }
 
 export default function LoginScreen({ onLogin }: Props) {
   const [mode, setMode] = useState<"login" | "register">("login");
-  const [username, setUsernameVal] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -27,8 +27,8 @@ export default function LoginScreen({ onLogin }: Props) {
 
   const handleSubmit = () => {
     setError("");
-    if (!username.trim() || !password.trim()) {
-      setError("ইউজারনেম ও পাসওয়ার্ড দিন");
+    if (!identifier.trim() || !password.trim()) {
+      setError("ইমেইল/ফোন ও পাসওয়ার্ড দিন");
       return;
     }
 
@@ -40,20 +40,20 @@ export default function LoginScreen({ onLogin }: Props) {
           setLoading(false);
           return;
         }
-        const result = registerUser(username.trim(), password);
+        const result = registerUser(identifier.trim(), password);
         if (result === "ok") {
-          onLogin(username.trim());
+          onLogin(identifier.trim());
         } else if (result === "usernameExists") {
-          setError("এই ইউজারনেম ইতিমধ্যে ব্যবহৃত");
+          setError("এই ইমেইল/ফোন নম্বর ইতিমধ্যে ব্যবহৃত");
         } else {
-          setError("ইউজারনেম কমপক্ষে ৩ অক্ষর ও পাসওয়ার্ড ৪ অক্ষর হতে হবে");
+          setError("ইমেইল/ফোন কমপক্ষে ৫ অক্ষর ও পাসওয়ার্ড ৪ অক্ষর হতে হবে");
         }
       } else {
-        const ok = loginUser(username.trim(), password);
+        const ok = loginUser(identifier.trim(), password);
         if (ok) {
-          onLogin(username.trim());
+          onLogin(identifier.trim());
         } else {
-          setError("ভুল ইউজারনেম বা পাসওয়ার্ড");
+          setError("ভুল ইমেইল/ফোন বা পাসওয়ার্ড");
         }
       }
     } catch {
@@ -154,9 +154,9 @@ export default function LoginScreen({ onLogin }: Props) {
           {/* Fields */}
           <div className="space-y-3">
             <Input
-              placeholder="ইউজারনেম"
-              value={username}
-              onChange={(e) => setUsernameVal(e.target.value)}
+              placeholder="ইমেইল বা ফোন নম্বর"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
               className="bg-secondary border-border text-foreground h-11"
               data-ocid="login.input"
               disabled={loading}
@@ -213,7 +213,7 @@ export default function LoginScreen({ onLogin }: Props) {
 
           <Button
             onClick={handleSubmit}
-            disabled={loading || !username.trim() || !password.trim()}
+            disabled={loading || !identifier.trim() || !password.trim()}
             className="w-full h-12 font-display font-bold bg-primary neon-glow-purple text-base"
             data-ocid="login.primary_button"
           >

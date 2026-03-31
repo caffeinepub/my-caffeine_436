@@ -7,6 +7,7 @@ import HomeScreen from "./components/HomeScreen";
 import InstallBanner from "./components/InstallBanner";
 import LeaderboardScreen from "./components/LeaderboardScreen";
 import LoginScreen from "./components/LoginScreen";
+import ProfileModal from "./components/ProfileModal";
 import QuizScreen from "./components/QuizScreen";
 import ResultsScreen from "./components/ResultsScreen";
 import WalletModal from "./components/WalletModal";
@@ -38,6 +39,7 @@ export default function App() {
   const [earnedAmount, setEarnedAmount] = useState(0);
   const [deductedAmount, setDeductedAmount] = useState(0);
   const [balance, setBalance] = useState(() => getBalance());
+  const [profileOpen, setProfileOpen] = useState<boolean>(false);
   const [walletMode, setWalletMode] = useState<
     "deposit" | "withdraw" | "history" | null
   >(null);
@@ -153,6 +155,7 @@ export default function App() {
             onHistory={() => setWalletMode("history")}
             username={username}
             onLogout={handleLogout}
+            onOpenProfile={() => setProfileOpen(true)}
           />
         )}
         {screen === "quiz" && (
@@ -236,6 +239,12 @@ export default function App() {
         onClose={() => setWalletMode(null)}
         onBalanceChange={setBalance}
         isLoggedIn={isLoggedIn}
+      />
+
+      <ProfileModal
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        identifier={username ?? ""}
       />
 
       <InstallBanner />
