@@ -11,6 +11,9 @@ import { motion } from "motion/react";
 import { useRef, useState } from "react";
 import { useGetActiveNotices, useGetActivePosts } from "../hooks/useQueries";
 import { CATEGORIES, type Lang, getCategoryLabel, t } from "../lib/i18n";
+import { playClick } from "../lib/sounds";
+import LinkedAccountsSection from "./LinkedAccountsSection";
+import WithdrawTicker from "./WithdrawTicker";
 
 interface Props {
   lang: Lang;
@@ -116,7 +119,10 @@ export default function HomeScreen({
               </div>
               <button
                 type="button"
-                onClick={onLogout}
+                onClick={() => {
+                  playClick();
+                  onLogout();
+                }}
                 className="text-muted-foreground hover:text-foreground transition-colors p-1"
                 title="লগআউট"
                 data-ocid="home.button"
@@ -152,7 +158,7 @@ export default function HomeScreen({
           </p>
         </motion.div>
 
-        {/* ── Section A: Notices / Announcements ── */}
+        {/* Notices */}
         {hasNotices && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -160,13 +166,13 @@ export default function HomeScreen({
             transition={{ delay: 0.15 }}
             className="w-full max-w-md mb-6"
           >
-            <h2 className="font-display text-sm font-bold mb-2 text-amber-400 uppercase tracking-wider flex items-center gap-1">
+            <h2 className="font-display text-sm font-bold mb-2 text-amber-400 uppercase tracking-wider">
               📢 ঘোষণা
             </h2>
             <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
               {notices.map((notice) => (
                 <div
-                  key={String(notice.id)}
+                  key={notice.id}
                   className="flex-shrink-0 w-64 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3"
                   data-ocid="home.card"
                 >
@@ -187,7 +193,7 @@ export default function HomeScreen({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="w-full max-w-md mb-8 rounded-2xl bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 p-4"
+          className="w-full max-w-md mb-6 rounded-2xl bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 p-4"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -197,11 +203,17 @@ export default function HomeScreen({
               <p className="text-3xl font-display font-extrabold text-neon-teal mt-1">
                 ৳{balance.toFixed(2)}
               </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                প্রতি ৮ সঠিক = +৳১০ | ভুল = -৳২
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <Button
                 size="sm"
-                onClick={onDeposit}
+                onClick={() => {
+                  playClick();
+                  onDeposit();
+                }}
                 className="bg-neon-green text-background font-bold neon-glow-green text-xs h-8"
                 data-ocid="wallet.deposit_button"
               >
@@ -210,7 +222,10 @@ export default function HomeScreen({
               </Button>
               <Button
                 size="sm"
-                onClick={onWithdraw}
+                onClick={() => {
+                  playClick();
+                  onWithdraw();
+                }}
                 className="bg-neon-orange text-background font-bold neon-glow-orange text-xs h-8"
                 data-ocid="wallet.withdraw_button"
               >
@@ -221,7 +236,10 @@ export default function HomeScreen({
           </div>
           <button
             type="button"
-            onClick={onHistory}
+            onClick={() => {
+              playClick();
+              onHistory();
+            }}
             className="mt-2 text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
             data-ocid="wallet.history_button"
           >
@@ -245,7 +263,10 @@ export default function HomeScreen({
                 transition={{ delay: 0.25 + i * 0.08 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.97 }}
-                onClick={() => onSelectCategory(cat.key)}
+                onClick={() => {
+                  playClick();
+                  onSelectCategory(cat.key);
+                }}
                 className={`relative p-5 rounded-2xl border-2 bg-gradient-to-br ${categoryGradients[i]} transition-all duration-200 text-left ${
                   selectedCategory === cat.key ? categoryGlows[i] : ""
                 }`}
@@ -274,7 +295,10 @@ export default function HomeScreen({
           className="w-full max-w-md mt-8 space-y-3"
         >
           <Button
-            onClick={onStartQuiz}
+            onClick={() => {
+              playClick();
+              onStartQuiz();
+            }}
             disabled={!selectedCategory}
             className="w-full h-14 font-display text-lg font-extrabold bg-primary neon-glow-purple rounded-xl disabled:opacity-40"
             data-ocid="home.primary_button"
@@ -282,7 +306,10 @@ export default function HomeScreen({
             🚀 {t(lang, "startQuiz")}
           </Button>
           <Button
-            onClick={onLeaderboard}
+            onClick={() => {
+              playClick();
+              onLeaderboard();
+            }}
             variant="outline"
             className="w-full h-12 font-display font-bold border-accent/50 text-accent hover:bg-accent/10"
             data-ocid="home.secondary_button"
@@ -292,21 +319,32 @@ export default function HomeScreen({
           </Button>
         </motion.div>
 
-        {/* ── Section B: Post / News Feed ── */}
+        {/* Withdraw Ticker */}
+        <div className="w-full max-w-md mt-6">
+          <WithdrawTicker />
+        </div>
+
+        {/* Linked Accounts Section */}
+        <LinkedAccountsSection
+          userId={username || "guest"}
+          onBalanceChange={onDeposit}
+        />
+
+        {/* Post / News Feed */}
         {hasPosts && (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.65 }}
-            className="w-full max-w-md mt-8"
+            className="w-full max-w-md mt-6"
           >
-            <h2 className="font-display text-sm font-bold mb-3 text-purple-400 uppercase tracking-wider flex items-center gap-1">
+            <h2 className="font-display text-sm font-bold mb-3 text-purple-400 uppercase tracking-wider">
               📰 নিউজফিড
             </h2>
             <div className="space-y-4">
               {posts.map((post) => (
                 <div
-                  key={String(post.id)}
+                  key={post.id}
                   className="rounded-xl border border-purple-500/30 bg-purple-500/10 overflow-hidden"
                   data-ocid="home.card"
                 >
@@ -328,9 +366,7 @@ export default function HomeScreen({
                       {post.content}
                     </p>
                     <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(
-                        Number(post.createdAt) / 1_000_000,
-                      ).toLocaleDateString("bn-BD")}
+                      {new Date(post.createdAt).toLocaleDateString("bn-BD")}
                     </p>
                   </div>
                 </div>

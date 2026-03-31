@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <meta name="theme-color" content="#1a0d2e" />
+    <meta name="theme-color" content="#7c3aed" />
     <meta name="description" content="মজাদার কুইজ গেম - বাংলায় কুইজ খেলুন! সাধারণ জ্ঞান, বিজ্ঞান, ইতিহাস, খেলাধুলা" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -11,10 +11,22 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <title>কুইজ গেম</title>
     <link rel="manifest" href="/manifest.json" />
-    <script type="module" crossorigin src="/assets/index-Z3ODzFqE.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-2YEUyzUv.css">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/icons/icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
+    <script type="module" crossorigin src="/assets/index-CbpjoqWe.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DvwqAbOD.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(reg) { console.log('SW registered:', reg.scope); })
+            .catch(function(err) { console.log('SW registration failed:', err); });
+        });
+      }
+    </script>
   </body>
 </html>

@@ -1,18 +1,20 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { List, Loader2, RotateCcw, Star, Trophy } from "lucide-react";
+import { List, RotateCcw, Star, Trophy } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
-import { Language, type ScoreEntry } from "../backend";
-import { useSubmitScore } from "../hooks/useQueries";
+import { useEffect, useRef, useState } from "react";
+import { useSubmitLocalScore } from "../hooks/useQueries";
 import { type Lang, t } from "../lib/i18n";
+import { playSuccess } from "../lib/sounds";
 
 interface Props {
   lang: Lang;
   score: number;
   total: number;
+  wrongCount: number;
   category: string;
   playerName?: string;
+  earned: number;
+  deducted: number;
   onPlayAgain: () => void;
   onLeaderboard: () => void;
   onHome: () => void;
@@ -24,16 +26,18 @@ export default function ResultsScreen({
   lang,
   score,
   total,
+  wrongCount,
   category,
   playerName,
+  earned,
+  deducted,
   onPlayAgain,
   onLeaderboard,
   onHome,
 }: Props) {
-  const [name, setName] = useState(playerName ?? "");
-  const [submitted, setSubmitted] = useState(false);
   const [rank, setRank] = useState<number | null>(null);
-  const submitScore = useSubmitScore();
+  const submitted = useRef(false);
+  const submitScore = useSubmitLocalScore();
 
   const pct = total > 0 ? (score / total) * 100 : 0;
   const badge =
@@ -49,25 +53,20 @@ export default function ResultsScreen({
         ? "text-neon-orange"
         : "text-neon-pink";
 
-  const handleSubmit = async () => {
-    if (!name.trim()) return;
-    const entry: ScoreEntry = {
-      id: BigInt(0),
-      score: BigInt(score),
-      language: lang === "bengali" ? Language.bengali : Language.english,
-      totalQuestions: BigInt(total),
-      timestamp: BigInt(Date.now()),
-      playerName: name.trim(),
-      category,
-    };
-    try {
-      await submitScore.mutateAsync(entry);
-      setSubmitted(true);
-      setRank(Math.floor(Math.random() * 10) + 1);
-    } catch {
-      // ignore
-    }
-  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional run-once
+  useEffect(() => {
+    if (submitted.current) return;
+    submitted.current = true;
+    playSuccess();
+    const name = playerName?.trim() || "অনিমন্ত্রিত";
+    submitScore
+      .mutateAsync({ playerName: name, score, total, category })
+      .then((entry) => {
+        // Calculate rank: rank = position in leaderboard
+        setRank(entry.id);
+      })
+      .catch(() => {});
+  }, []); // eslint-disable-line
 
   return (
     <motion.div
@@ -108,7 +107,7 @@ export default function ResultsScreen({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.45 }}
-        className="flex gap-2 mt-4 mb-8"
+        className="flex gap-2 mt-4 mb-6"
       >
         {STAR_IDS.map((id, i) => (
           <Star
@@ -123,52 +122,58 @@ export default function ResultsScreen({
         ))}
       </motion.div>
 
-      {!submitted ? (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="w-full max-w-sm space-y-3"
-        >
-          <Input
-            placeholder={t(lang, "yourName")}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="bg-card border-border text-center font-display text-lg h-12"
-            data-ocid="results.input"
-            onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          />
-          <Button
-            onClick={handleSubmit}
-            disabled={!name.trim() || submitScore.isPending}
-            className="w-full h-12 font-display font-bold bg-primary neon-glow-purple"
-            data-ocid="results.submit_button"
-          >
-            {submitScore.isPending ? (
-              <Loader2 size={18} className="animate-spin mr-2" />
-            ) : null}
-            {t(lang, "submitScore")}
-          </Button>
-        </motion.div>
-      ) : (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-card border border-primary/30 rounded-2xl p-6 w-full max-w-sm mb-4"
-          data-ocid="results.success_state"
-        >
-          <p className="text-muted-foreground text-sm">{t(lang, "yourRank")}</p>
-          <p className="font-display text-4xl font-extrabold text-neon-teal">
-            #{rank}
+      {/* Balance change summary */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="flex gap-3 mb-4"
+      >
+        {earned > 0 && (
+          <div className="bg-green-500/10 border border-green-500/40 rounded-xl px-4 py-2">
+            <p className="text-green-400 font-bold text-lg">+৳{earned}</p>
+            <p className="text-xs text-muted-foreground">বোনাস পাওয়া গেছে!</p>
+          </div>
+        )}
+        {deducted > 0 && (
+          <div className="bg-red-500/10 border border-red-500/40 rounded-xl px-4 py-2">
+            <p className="text-red-400 font-bold text-lg">-৳{deducted}</p>
+            <p className="text-xs text-muted-foreground">
+              {wrongCount} ভুল উত্তর
+            </p>
+          </div>
+        )}
+        {earned === 0 && deducted === 0 && (
+          <div className="bg-secondary border border-border rounded-xl px-4 py-2">
+            <p className="text-sm text-muted-foreground">ব্যালেন্স অপরিবর্তিত</p>
+          </div>
+        )}
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.55 }}
+        className="bg-card border border-primary/30 rounded-2xl p-4 w-full max-w-sm mb-4"
+        data-ocid="results.success_state"
+      >
+        <p className="text-muted-foreground text-xs mb-1">🏅 স্কোর জমা হয়েছে</p>
+        <p className="font-display font-bold">{playerName}</p>
+        {rank !== null && (
+          <p className="text-neon-teal font-display font-extrabold text-2xl mt-1">
+            🏆 #{rank} র্যাংক
           </p>
-        </motion.div>
-      )}
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          সঠিক: {score} | ভুল: {wrongCount}
+        </p>
+      </motion.div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.65 }}
-        className="flex gap-3 mt-6 w-full max-w-sm"
+        className="flex gap-3 mt-2 w-full max-w-sm"
       >
         <Button
           variant="outline"

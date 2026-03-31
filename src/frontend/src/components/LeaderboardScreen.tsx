@@ -3,8 +3,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Loader2, Trophy } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
-import type { ScoreEntry } from "../backend";
-import { useGetLeaderboardByCategory } from "../hooks/useQueries";
+import {
+  type LocalScoreEntry,
+  useGetLeaderboardByCategory,
+} from "../hooks/useQueries";
 import { CATEGORIES, type Lang, getCategoryLabel, t } from "../lib/i18n";
 
 interface Props {
@@ -17,7 +19,7 @@ const MEDAL = ["🥇", "🥈", "🥉"];
 function LeaderboardTab({ lang, category }: { lang: Lang; category: string }) {
   const { data, isLoading } = useGetLeaderboardByCategory(category);
   const sorted = [...(data ?? [])]
-    .sort((a, b) => Number(b.score) - Number(a.score))
+    .sort((a, b) => b.score - a.score)
     .slice(0, 20);
 
   if (isLoading) {
@@ -38,16 +40,16 @@ function LeaderboardTab({ lang, category }: { lang: Lang; category: string }) {
         data-ocid="leaderboard.empty_state"
       >
         <Trophy size={40} className="mx-auto mb-3 opacity-40" />
-        <p>{t(lang, "noQuestions")}</p>
+        <p>এখনো কোনো র্যাংক নেই। কুইজ খেলুন!</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-2 mt-4">
-      {sorted.map((entry: ScoreEntry, i: number) => (
+      {sorted.map((entry: LocalScoreEntry, i: number) => (
         <motion.div
-          key={`${entry.playerName}-${i}`}
+          key={`${entry.playerName}-${entry.id}`}
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: i * 0.05 }}
@@ -66,7 +68,7 @@ function LeaderboardTab({ lang, category }: { lang: Lang; category: string }) {
             {i < 3 ? MEDAL[i] : `#${i + 1}`}
           </span>
           <div className="flex-1 min-w-0">
-            <p className="font-display font-bold truncate">
+            <p className="font-display font-bold truncate text-foreground">
               {entry.playerName}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -75,11 +77,9 @@ function LeaderboardTab({ lang, category }: { lang: Lang; category: string }) {
           </div>
           <div className="text-right">
             <p className="font-display font-extrabold text-neon-teal text-lg">
-              {Number(entry.score)}
+              {entry.score}
             </p>
-            <p className="text-xs text-muted-foreground">
-              /{Number(entry.totalQuestions)}
-            </p>
+            <p className="text-xs text-muted-foreground">/{entry.total}</p>
           </div>
         </motion.div>
       ))}

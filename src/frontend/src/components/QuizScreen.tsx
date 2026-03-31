@@ -4,17 +4,24 @@ import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Question } from "../backend";
 import { type Lang, getCategoryLabel, t } from "../lib/i18n";
+import {
+  playClick,
+  playCorrect,
+  playGameStart,
+  playTimeout,
+  playWrong,
+} from "../lib/sounds";
 
 interface Props {
   lang: Lang;
   category: string;
   questions: Question[];
-  onComplete: (score: number, total: number) => void;
+  onComplete: (score: number, total: number, wrongCount: number) => void;
   onBack: () => void;
 }
 
 const QUESTION_TIME = 15;
-const MAX_QUESTIONS = 10;
+const MAX_QUESTIONS = 8;
 const OPTION_KEYS = ["A", "B", "C", "D"] as const;
 
 export default function QuizScreen({
@@ -27,6 +34,7 @@ export default function QuizScreen({
   const limited = questions.slice(0, MAX_QUESTIONS);
   const [idx, setIdx] = useState(0);
   const [score, setScore] = useState(0);
+  const [wrongCount, setWrongCount] = useState(0);
   const [selected, setSelected] = useState<number | null>(null);
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
   const [animState, setAnimState] = useState<"idle" | "correct" | "wrong">(
@@ -37,15 +45,22 @@ export default function QuizScreen({
   const stateRef = useRef({
     idx,
     score,
+    wrongCount,
     animState,
     limitedLen: limited.length,
     onComplete,
   });
 
+  // Play game start sound on mount
+  useEffect(() => {
+    playGameStart();
+  }, []);
+
   useEffect(() => {
     stateRef.current = {
       idx,
       score,
+      wrongCount,
       animState,
       limitedLen: limited.length,
       onComplete,
@@ -60,13 +75,17 @@ export default function QuizScreen({
       const {
         idx: curIdx,
         score: curScore,
+        wrongCount: curWrong,
         animState: curAnim,
         limitedLen,
         onComplete: done,
       } = stateRef.current;
+      const isCorrectNow = curAnim === "correct";
       const nextIdx = curIdx + 1;
+      const finalScore = curScore + (isCorrectNow ? 1 : 0);
+      const finalWrong = curWrong + (curAnim === "wrong" ? 1 : 0);
       if (nextIdx >= limitedLen) {
-        done(curScore + (curAnim === "correct" ? 1 : 0), limitedLen);
+        done(finalScore, limitedLen, finalWrong);
       } else {
         setIdx(nextIdx);
         setSelected(null);
@@ -87,7 +106,9 @@ export default function QuizScreen({
       setTimeLeft((prev) => {
         if (prev <= 1) {
           setAnimState("wrong");
+          setWrongCount((w) => w + 1);
           setSelected(-1);
+          playTimeout();
           advanceRef.current();
           return 0;
         }
@@ -108,8 +129,11 @@ export default function QuizScreen({
     if (isCorrect) {
       setScore((s) => s + 1);
       setAnimState("correct");
+      playCorrect();
     } else {
+      setWrongCount((w) => w + 1);
       setAnimState("wrong");
+      playWrong();
     }
     advance();
   };
@@ -151,7 +175,10 @@ export default function QuizScreen({
         <div className="flex items-center justify-between mb-3">
           <button
             type="button"
-            onClick={onBack}
+            onClick={() => {
+              playClick();
+              onBack();
+            }}
             className="text-muted-foreground hover:text-foreground"
             data-ocid="quiz.back_button"
           >
@@ -188,7 +215,11 @@ export default function QuizScreen({
             />
           </div>
           <span
-            className={`font-display font-bold text-lg w-8 text-right ${timeLeft <= 5 ? "text-destructive animate-timer-pulse" : "text-foreground"}`}
+            className={`font-display font-bold text-lg w-8 text-right ${
+              timeLeft <= 5
+                ? "text-destructive animate-timer-pulse"
+                : "text-foreground"
+            }`}
           >
             {timeLeft}
           </span>
@@ -239,7 +270,10 @@ export default function QuizScreen({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: i * 0.06 }}
-                onClick={() => handleSelect(i)}
+                onClick={() => {
+                  playClick();
+                  handleSelect(i);
+                }}
                 disabled={selected !== null}
                 className={`w-full p-4 rounded-xl border-2 font-body font-semibold text-left transition-all duration-200 ${btnClass} ${animClass} disabled:cursor-default`}
                 data-ocid={`quiz.item.${i + 1}`}
@@ -265,7 +299,9 @@ export default function QuizScreen({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0 }}
-              className={`mt-4 text-center font-display font-bold text-xl ${animState === "correct" ? "text-neon-green" : "text-destructive"}`}
+              className={`mt-4 text-center font-display font-bold text-xl ${
+                animState === "correct" ? "text-neon-green" : "text-destructive"
+              }`}
               data-ocid={
                 animState === "correct"
                   ? "quiz.success_state"

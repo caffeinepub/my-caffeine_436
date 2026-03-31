@@ -14,7 +14,11 @@ import { useActor } from "./hooks/useActor";
 import { useGetQuestionsByCategoryAndLanguage } from "./hooks/useQueries";
 import { clearUsername, getUsername, setUsername } from "./lib/auth";
 import type { Lang } from "./lib/i18n";
-import { getFallbackQuestions } from "./lib/sampleQuestions";
+import { applyQuizResult } from "./lib/quizStats";
+import {
+  getFallbackQuestions,
+  pickUniqueQuestions,
+} from "./lib/sampleQuestions";
 import { getBalance } from "./lib/wallet";
 
 type Screen = "home" | "quiz" | "results" | "leaderboard" | "admin";
@@ -30,6 +34,9 @@ export default function App() {
   const [quizQuestions, setQuizQuestions] = useState<Question[]>([]);
   const [finalScore, setFinalScore] = useState(0);
   const [finalTotal, setFinalTotal] = useState(0);
+  const [finalWrong, setFinalWrong] = useState(0);
+  const [earnedAmount, setEarnedAmount] = useState(0);
+  const [deductedAmount, setDeductedAmount] = useState(0);
   const [balance, setBalance] = useState(() => getBalance());
   const [walletMode, setWalletMode] = useState<
     "deposit" | "withdraw" | "history" | null
@@ -53,7 +60,7 @@ export default function App() {
 
   const getQuestionsForQuiz = (): Question[] => {
     const backend = fetchedQuestions ?? [];
-    if (backend.length > 0) return backend;
+    if (backend.length > 0) return pickUniqueQuestions(backend);
     return getFallbackQuestions(selectedCategory, language);
   };
 
@@ -75,16 +82,24 @@ export default function App() {
     setScreen("quiz");
   };
 
-  const handleDeposit = () => {
-    setWalletMode("deposit");
-  };
-
-  const handleWithdraw = () => {
-    setWalletMode("withdraw");
-  };
-
-  const handleHistory = () => {
-    setWalletMode("history");
+  const handleQuizComplete = (
+    score: number,
+    total: number,
+    wrongCount: number,
+  ) => {
+    setFinalScore(score);
+    setFinalTotal(total);
+    setFinalWrong(wrongCount);
+    // Apply balance changes
+    const { earned, deducted } = applyQuizResult(
+      username ?? "guest",
+      score,
+      wrongCount,
+    );
+    setEarnedAmount(earned);
+    setDeductedAmount(deducted);
+    setBalance(getBalance());
+    setScreen("results");
   };
 
   if (!isLoggedIn) {
@@ -107,7 +122,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background max-w-lg mx-auto relative overflow-hidden">
-      {/* Decorative background orbs */}
       <div
         className="fixed inset-0 pointer-events-none overflow-hidden"
         aria-hidden="true"
@@ -134,9 +148,9 @@ export default function App() {
             onLeaderboard={() => setScreen("leaderboard")}
             onOpenAdmin={() => setScreen("admin")}
             balance={balance}
-            onDeposit={handleDeposit}
-            onWithdraw={handleWithdraw}
-            onHistory={handleHistory}
+            onDeposit={() => setWalletMode("deposit")}
+            onWithdraw={() => setWalletMode("withdraw")}
+            onHistory={() => setWalletMode("history")}
             username={username}
             onLogout={handleLogout}
           />
@@ -147,11 +161,7 @@ export default function App() {
             lang={lang}
             category={selectedCategory}
             questions={quizQuestions}
-            onComplete={(score, total) => {
-              setFinalScore(score);
-              setFinalTotal(total);
-              setScreen("results");
-            }}
+            onComplete={handleQuizComplete}
             onBack={() => setScreen("home")}
           />
         )}
@@ -161,14 +171,20 @@ export default function App() {
             lang={lang}
             score={finalScore}
             total={finalTotal}
+            wrongCount={finalWrong}
             category={selectedCategory}
             playerName={username ?? undefined}
+            earned={earnedAmount}
+            deducted={deductedAmount}
             onPlayAgain={() => {
               setQuizQuestions(getQuestionsForQuiz());
               setScreen("quiz");
             }}
             onLeaderboard={() => setScreen("leaderboard")}
-            onHome={() => setScreen("home")}
+            onHome={() => {
+              setBalance(getBalance());
+              setScreen("home");
+            }}
           />
         )}
         {screen === "leaderboard" && (

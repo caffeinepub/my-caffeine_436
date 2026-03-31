@@ -1,18 +1,37 @@
 {
-  "name": "কুইজ গেম",
-  "short_name": "কুইজ",
-  "description": "মজাদার কুইজ গেম - বাংলায় কুইজ খেলুন!",
+  "name": "কুইজ গেম - kananbala.com",
+  "short_name": "কুইজ গেম",
+  "description": "মজাদার বাংলা কুইজ গেম! সাধারণ জ্ঞান, বিজ্ঞান, ইতিহাস, ভূগোল, খেলাধুলা সহ ১০০+ প্রশ্ন নিয়ে খেলুন। kananbala.com",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0e0921",
-  "theme_color": "#0e0921",
-  "orientation": "portrait",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "lang": "bn",
+  "dir": "ltr",
+  "categories": ["games", "entertainment", "education"],
   "icons": [
     {
-      "src": "/assets/generated/quiz-icon-512.dim_512x512.png",
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ]
+  ],
+  "prefer_related_applications": false,
+  "related_applications": []
 }

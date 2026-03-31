@@ -59,9 +59,14 @@ import {
   useUpdatePost,
   useUpdateQuestion,
 } from "../hooks/useQueries";
+import type { LocalNotice, LocalPost } from "../hooks/useQueries";
 import { CATEGORIES, type Lang, getCategoryLabel, t } from "../lib/i18n";
+import {
+  PLATFORM_INFO,
+  type PlatformType,
+  getAllLinkedAccounts,
+} from "../lib/linkedAccounts";
 import { SAMPLE_QUESTIONS } from "../lib/sampleQuestions";
-import type { Notice, Post } from "../lib/types";
 import { getTransactions } from "../lib/wallet";
 
 const ADMIN_PASSWORD = "admin123";
@@ -199,15 +204,8 @@ function AdminDashboard({ lang, onBack }: Props) {
       </header>
 
       <div className="flex-1 px-4 pb-8">
-        <Tabs defaultValue="questions">
+        <Tabs defaultValue="users">
           <TabsList className="w-full mb-4 bg-secondary border border-border flex flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger
-              value="questions"
-              className="flex-1 font-display text-xs min-w-[60px]"
-              data-ocid="admin.tab"
-            >
-              📝 প্রশ্ন
-            </TabsTrigger>
             <TabsTrigger
               value="users"
               className="flex-1 font-display text-xs min-w-[60px]"
@@ -232,6 +230,13 @@ function AdminDashboard({ lang, onBack }: Props) {
               পোস্ট
             </TabsTrigger>
             <TabsTrigger
+              value="questions"
+              className="flex-1 font-display text-xs min-w-[60px]"
+              data-ocid="admin.tab"
+            >
+              📝 প্রশ্ন
+            </TabsTrigger>
+            <TabsTrigger
               value="transactions"
               className="flex-1 font-display text-xs min-w-[60px]"
               data-ocid="admin.tab"
@@ -246,11 +251,15 @@ function AdminDashboard({ lang, onBack }: Props) {
               <Settings size={12} className="mr-1" />
               সেটিংস
             </TabsTrigger>
+            <TabsTrigger
+              value="linked"
+              className="flex-1 font-display text-xs min-w-[60px]"
+              data-ocid="admin.tab"
+            >
+              🔗 একাউন্ট
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="questions">
-            <QuestionsTab lang={lang} />
-          </TabsContent>
           <TabsContent value="users">
             <UsersTab />
           </TabsContent>
@@ -260,11 +269,17 @@ function AdminDashboard({ lang, onBack }: Props) {
           <TabsContent value="posts">
             <PostsTab />
           </TabsContent>
+          <TabsContent value="questions">
+            <QuestionsTab lang={lang} />
+          </TabsContent>
           <TabsContent value="transactions">
             <TransactionsTab />
           </TabsContent>
           <TabsContent value="settings">
             <SettingsTab />
+          </TabsContent>
+          <TabsContent value="linked">
+            <LinkedAccountsAdminTab />
           </TabsContent>
         </Tabs>
       </div>
@@ -272,7 +287,629 @@ function AdminDashboard({ lang, onBack }: Props) {
   );
 }
 
-// ── Questions Tab ─────────────────────────────────────────────────────────────
+// ── Users Tab ───────────────────────────────────────────────────────────────────────
+
+function UsersTab() {
+  const { data: accounts, isLoading, refetch } = useGetAllUserAccounts();
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
+          মোট ব্যবহারকারী: {accounts?.length ?? 0}
+        </h3>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="text-xs text-primary hover:text-accent px-2 py-1 border border-primary/30 rounded"
+        >
+          রিফ্রেশ
+        </button>
+      </div>
+      {isLoading ? (
+        <div
+          className="flex justify-center py-12"
+          data-ocid="admin.loading_state"
+        >
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : !accounts || accounts.length === 0 ? (
+        <div
+          className="text-center py-12 text-muted-foreground"
+          data-ocid="admin.empty_state"
+        >
+          <Users size={40} className="mx-auto mb-3 opacity-40" />
+          <p>এখনো কোনো ব্যবহারকারী নেই</p>
+          <p className="text-xs mt-2">ব্যবহারকারী রেজিস্ট্রেশন করলে এখানে দেখায়াবে</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table data-ocid="admin.table">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="font-display text-xs">#</TableHead>
+                <TableHead className="font-display text-xs">ইউজারনেম</TableHead>
+                <TableHead className="font-display text-xs">পাসওয়ার্ড</TableHead>
+                <TableHead className="font-display text-xs">তারিখ</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {accounts.map((acc, i) => (
+                <TableRow key={acc.username} data-ocid={`admin.item.${i + 1}`}>
+                  <TableCell className="text-muted-foreground text-xs">
+                    {i + 1}
+                  </TableCell>
+                  <TableCell className="font-display font-bold text-sm text-accent">
+                    {acc.username}
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs bg-secondary border border-border px-2 py-1 rounded">
+                      {acc.password}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {new Date(acc.createdAt).toLocaleDateString("bn-BD")}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Notices Tab ──────────────────────────────────────────────────────────────────
+
+interface NoticeForm {
+  title: string;
+  content: string;
+  isActive: boolean;
+}
+
+function NoticesTab() {
+  const { data: notices, isLoading } = useGetAllNotices();
+  const addNotice = useAddNotice();
+  const updateNotice = useUpdateNotice();
+  const deleteNotice = useDeleteNotice();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<LocalNotice | null>(null);
+  const [form, setForm] = useState<NoticeForm>({
+    title: "",
+    content: "",
+    isActive: true,
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const openAdd = () => {
+    setEditTarget(null);
+    setForm({ title: "", content: "", isActive: true });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (n: LocalNotice) => {
+    setEditTarget(n);
+    setForm({ title: n.title, content: n.content, isActive: n.isActive });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim() || !form.content.trim()) {
+      toast.error("শিরোনাম ও বিষয়বস্তু লিখুন");
+      return;
+    }
+    try {
+      if (editTarget) {
+        await updateNotice.mutateAsync({
+          id: editTarget.id,
+          title: form.title,
+          content: form.content,
+          isActive: form.isActive,
+        });
+        toast.success("নোটিশ আপডেট হয়েছে");
+      } else {
+        await addNotice.mutateAsync({
+          title: form.title,
+          content: form.content,
+        });
+        toast.success("নোটিশ যোগ হয়েছে ✅");
+      }
+      setDialogOpen(false);
+    } catch (e) {
+      toast.error(`ত্রুটি হয়েছে: ${String(e)}`);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    await deleteNotice.mutateAsync(id);
+    toast.success("নোটিশ মুছে ফেলা হয়েছে");
+    setDeleteConfirm(null);
+  };
+
+  const isMutating =
+    addNotice.isPending || updateNotice.isPending || deleteNotice.isPending;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
+          মোট নোটিশ: {notices?.length ?? 0}
+        </h3>
+        <Button
+          size="sm"
+          onClick={openAdd}
+          className="bg-primary font-display neon-glow-purple min-h-[44px]"
+          data-ocid="admin.primary_button"
+        >
+          <Plus size={16} className="mr-1" />
+          নোটিশ যোগ করুন
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div
+          className="flex justify-center py-12"
+          data-ocid="admin.loading_state"
+        >
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : !notices || notices.length === 0 ? (
+        <div
+          className="text-center py-12 text-muted-foreground"
+          data-ocid="admin.empty_state"
+        >
+          <p>কোনো নোটিশ নেই। নতুন নোটিশ যোগ করুন।</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {notices.map((notice, i) => (
+            <div
+              key={notice.id}
+              className="rounded-xl border border-border bg-card p-4"
+              data-ocid={`admin.item.${i + 1}`}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <p className="font-display font-bold text-sm truncate">
+                      {notice.title}
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs shrink-0 ${
+                        notice.isActive
+                          ? "border-green-500 text-green-400"
+                          : "border-muted text-muted-foreground"
+                      }`}
+                    >
+                      {notice.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {notice.content}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => openEdit(notice)}
+                    className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
+                    data-ocid={`admin.edit_button.${i + 1}`}
+                  >
+                    <Edit size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteConfirm(notice.id)}
+                    className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                    data-ocid={`admin.delete_button.${i + 1}`}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent
+          className="bg-card border-border text-foreground max-w-md"
+          data-ocid="admin.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {editTarget ? "নোটিশ সম্পাদনা" : "নতুন নোটিশ"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-sm">শিরোনাম *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
+                placeholder="নোটিশের শিরোনাম"
+                className="bg-secondary border-border mt-1"
+                data-ocid="admin.input"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">বিষয়বস্তু *</Label>
+              <Textarea
+                value={form.content}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, content: e.target.value }))
+                }
+                placeholder="নোটিশের বিষয়বস্তু লিখুন..."
+                className="bg-secondary border-border mt-1 min-h-[100px]"
+                data-ocid="admin.textarea"
+              />
+            </div>
+            {editTarget && (
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">সক্রিয় করুন</Label>
+                <Switch
+                  checked={form.isActive}
+                  onCheckedChange={(v) =>
+                    setForm((f) => ({ ...f, isActive: v }))
+                  }
+                  data-ocid="admin.switch"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              className="flex-1"
+              data-ocid="admin.cancel_button"
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={
+                !form.title.trim() || !form.content.trim() || isMutating
+              }
+              className="flex-1 bg-primary font-bold neon-glow-purple"
+              data-ocid="admin.save_button"
+            >
+              {isMutating ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : null}
+              সংরক্ষণ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirm !== null}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
+        <DialogContent
+          className="bg-card border-border text-foreground max-w-sm"
+          data-ocid="admin.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">
+              নোটিশ মুছুন
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            এই নোটিশটি মুছে ফেলতে চান?
+          </p>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              className="flex-1"
+              data-ocid="admin.cancel_button"
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={() =>
+                deleteConfirm !== null && handleDelete(deleteConfirm)
+              }
+              disabled={deleteNotice.isPending}
+              className="flex-1 bg-destructive text-destructive-foreground font-bold"
+              data-ocid="admin.confirm_button"
+            >
+              {deleteNotice.isPending ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : null}
+              মুছুন
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Posts Tab ───────────────────────────────────────────────────────────────────
+
+interface PostForm {
+  title: string;
+  content: string;
+  imageUrl: string;
+}
+
+function PostsTab() {
+  const { data: posts, isLoading } = useGetAllPosts();
+  const addPost = useAddPost();
+  const updatePost = useUpdatePost();
+  const deletePost = useDeletePost();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<LocalPost | null>(null);
+  const [form, setForm] = useState<PostForm>({
+    title: "",
+    content: "",
+    imageUrl: "",
+  });
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
+  const openAdd = () => {
+    setEditTarget(null);
+    setForm({ title: "", content: "", imageUrl: "" });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (p: LocalPost) => {
+    setEditTarget(p);
+    setForm({ title: p.title, content: p.content, imageUrl: p.imageUrl });
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim() || !form.content.trim()) {
+      toast.error("শিরোনাম ও বিষয়বস্তু লিখুন");
+      return;
+    }
+    try {
+      if (editTarget) {
+        await updatePost.mutateAsync({
+          id: editTarget.id,
+          title: form.title,
+          content: form.content,
+          imageUrl: form.imageUrl,
+        });
+        toast.success("পোস্ট আপডেট হয়েছে");
+      } else {
+        await addPost.mutateAsync({
+          title: form.title,
+          content: form.content,
+          imageUrl: form.imageUrl,
+        });
+        toast.success("পোস্ট যোগ হয়েছে ✅");
+      }
+      setDialogOpen(false);
+    } catch (e) {
+      toast.error(`ত্রুটি: ${String(e)}`);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    await deletePost.mutateAsync(id);
+    toast.success("পোস্ট মুছে ফেলা হয়েছে");
+    setDeleteConfirm(null);
+  };
+
+  const isMutating =
+    addPost.isPending || updatePost.isPending || deletePost.isPending;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
+          মোট পোস্ট: {posts?.length ?? 0}
+        </h3>
+        <Button
+          size="sm"
+          onClick={openAdd}
+          className="bg-primary font-display neon-glow-purple min-h-[44px]"
+          data-ocid="admin.primary_button"
+        >
+          <Plus size={16} className="mr-1" />
+          পোস্ট যোগ করুন
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div
+          className="flex justify-center py-12"
+          data-ocid="admin.loading_state"
+        >
+          <Loader2 className="animate-spin text-primary" size={32} />
+        </div>
+      ) : !posts || posts.length === 0 ? (
+        <div
+          className="text-center py-12 text-muted-foreground"
+          data-ocid="admin.empty_state"
+        >
+          <p>কোনো পোস্ট নেই। নতুন পোস্ট যোগ করুন।</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {posts.map((post, i) => (
+            <div
+              key={post.id}
+              className="rounded-xl border border-border bg-card overflow-hidden"
+              data-ocid={`admin.item.${i + 1}`}
+            >
+              {post.imageUrl && (
+                <img
+                  src={post.imageUrl}
+                  alt={post.title}
+                  className="w-full h-32 object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              )}
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-sm">
+                      {post.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {post.content}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(post)}
+                      className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
+                      data-ocid={`admin.edit_button.${i + 1}`}
+                    >
+                      <Edit size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteConfirm(post.id)}
+                      className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                      data-ocid={`admin.delete_button.${i + 1}`}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent
+          className="bg-card border-border text-foreground max-w-md"
+          data-ocid="admin.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              {editTarget ? "পোস্ট সম্পাদনা" : "নতুন পোস্ট"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="text-sm">শিরোনাম *</Label>
+              <Input
+                value={form.title}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, title: e.target.value }))
+                }
+                placeholder="পোস্টের শিরোনাম"
+                className="bg-secondary border-border mt-1"
+                data-ocid="admin.input"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">বিষয়বস্তু *</Label>
+              <Textarea
+                value={form.content}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, content: e.target.value }))
+                }
+                placeholder="পোস্টের বিষয়বস্তু লিখুন..."
+                className="bg-secondary border-border mt-1 min-h-[100px]"
+                data-ocid="admin.textarea"
+              />
+            </div>
+            <div>
+              <Label className="text-sm">ছবির URL (ঐচ্ছিক)</Label>
+              <Input
+                value={form.imageUrl}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, imageUrl: e.target.value }))
+                }
+                placeholder="https://..."
+                className="bg-secondary border-border mt-1 font-mono text-xs"
+                data-ocid="admin.input"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              className="flex-1"
+              data-ocid="admin.cancel_button"
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={
+                !form.title.trim() || !form.content.trim() || isMutating
+              }
+              className="flex-1 bg-primary font-bold neon-glow-purple"
+              data-ocid="admin.save_button"
+            >
+              {isMutating ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : null}
+              সংরক্ষণ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={deleteConfirm !== null}
+        onOpenChange={() => setDeleteConfirm(null)}
+      >
+        <DialogContent
+          className="bg-card border-border text-foreground max-w-sm"
+          data-ocid="admin.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display text-destructive">
+              পোস্ট মুছুন
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-muted-foreground text-sm">
+            এই পোস্টটি মুছে ফেলতে চান?
+          </p>
+          <DialogFooter className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+              className="flex-1"
+              data-ocid="admin.cancel_button"
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={() =>
+                deleteConfirm !== null && handleDelete(deleteConfirm)
+              }
+              disabled={deletePost.isPending}
+              className="flex-1 bg-destructive text-destructive-foreground font-bold"
+              data-ocid="admin.confirm_button"
+            >
+              {deletePost.isPending ? (
+                <Loader2 size={16} className="animate-spin mr-1" />
+              ) : null}
+              মুছুন
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ── Questions Tab ────────────────────────────────────────────────────────────────
 
 function QuestionsTab({ lang }: { lang: Lang }) {
   const { data: backendQs, isLoading } = useGetAllQuestions();
@@ -297,7 +934,6 @@ function QuestionsTab({ lang }: { lang: Lang }) {
     setForm(emptyForm());
     setDialogOpen(true);
   };
-
   const openEdit = (q: Question) => {
     setEditTarget(q);
     setForm({
@@ -331,9 +967,7 @@ function QuestionsTab({ lang }: { lang: Lang }) {
   const handleDelete = async (id: bigint) => {
     try {
       await deleteQuestion.mutateAsync(id);
-    } catch {
-      // ignore
-    }
+    } catch {}
     setDeleteConfirm(null);
   };
 
@@ -423,9 +1057,6 @@ function QuestionsTab({ lang }: { lang: Lang }) {
                 <TableHead className="font-display text-xs hidden sm:table-cell">
                   {t(lang, "category")}
                 </TableHead>
-                <TableHead className="font-display text-xs hidden sm:table-cell">
-                  {t(lang, "difficulty")}
-                </TableHead>
                 <TableHead className="font-display text-xs" />
               </TableRow>
             </TableHeader>
@@ -441,29 +1072,12 @@ function QuestionsTab({ lang }: { lang: Lang }) {
                   <TableCell className="text-xs text-muted-foreground hidden sm:table-cell">
                     {getCategoryLabel(lang, q.category)}
                   </TableCell>
-                  <TableCell className="text-xs hidden sm:table-cell">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs font-display ${
-                        q.difficulty === Difficulty.easy
-                          ? "bg-neon-green/20 text-neon-green"
-                          : q.difficulty === Difficulty.hard
-                            ? "bg-destructive/20 text-destructive"
-                            : "bg-neon-orange/20 text-neon-orange"
-                      }`}
-                    >
-                      {q.difficulty === Difficulty.easy
-                        ? t(lang, "easy")
-                        : q.difficulty === Difficulty.hard
-                          ? t(lang, "hard")
-                          : t(lang, "medium")}
-                    </span>
-                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <button
                         type="button"
                         onClick={() => openEdit(q)}
-                        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground min-h-[44px] min-w-[44px] flex items-center justify-center"
                         data-ocid={`admin.edit_button.${i + 1}`}
                       >
                         <Edit size={16} />
@@ -471,7 +1085,7 @@ function QuestionsTab({ lang }: { lang: Lang }) {
                       <button
                         type="button"
                         onClick={() => setDeleteConfirm(q.id)}
-                        className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                        className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive min-h-[44px] min-w-[44px] flex items-center justify-center"
                         data-ocid={`admin.delete_button.${i + 1}`}
                       >
                         <Trash2 size={16} />
@@ -485,7 +1099,6 @@ function QuestionsTab({ lang }: { lang: Lang }) {
         </div>
       )}
 
-      {/* Add/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
           className="bg-card border-border text-foreground max-w-lg w-full max-h-[90vh] overflow-y-auto"
@@ -655,7 +1268,6 @@ function QuestionsTab({ lang }: { lang: Lang }) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm */}
       <Dialog
         open={deleteConfirm !== null}
         onOpenChange={() => setDeleteConfirm(null)}
@@ -670,7 +1282,7 @@ function QuestionsTab({ lang }: { lang: Lang }) {
             </DialogTitle>
           </DialogHeader>
           <p className="text-muted-foreground text-sm">
-            এই প্রশ্নটি মুছে ফেলতে চান? এটি পূর্বাবস্থায় ফেরানো যাবে না।
+            এই প্রশ্নটি মুছে ফেলতে চান?
           </p>
           <DialogFooter className="flex gap-2">
             <Button
@@ -701,637 +1313,10 @@ function QuestionsTab({ lang }: { lang: Lang }) {
   );
 }
 
-// ── Users Tab (backend accounts) ──────────────────────────────────────────────
-
-function UsersTab() {
-  const { data: accounts, isLoading } = useGetAllUserAccounts();
-
-  if (isLoading) {
-    return (
-      <div
-        className="flex justify-center py-12"
-        data-ocid="admin.loading_state"
-      >
-        <Loader2 className="animate-spin text-primary" size={32} />
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
-          মোট ব্যবহারকারী: {accounts?.length ?? 0}
-        </h3>
-      </div>
-      {!accounts || accounts.length === 0 ? (
-        <div
-          className="text-center py-12 text-muted-foreground"
-          data-ocid="admin.empty_state"
-        >
-          <Users size={40} className="mx-auto mb-3 opacity-40" />
-          <p>এখনো কোনো ব্যবহারকারী নেই</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <Table data-ocid="admin.table">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="font-display text-xs">#</TableHead>
-                <TableHead className="font-display text-xs">ইউজারনেম</TableHead>
-                <TableHead className="font-display text-xs">পাসওয়ার্ড</TableHead>
-                <TableHead className="font-display text-xs">তারিখ</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {accounts.map((acc, i) => (
-                <TableRow key={acc.username} data-ocid={`admin.item.${i + 1}`}>
-                  <TableCell className="text-muted-foreground text-xs">
-                    {i + 1}
-                  </TableCell>
-                  <TableCell className="font-display font-bold text-sm text-accent">
-                    {acc.username}
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-xs bg-secondary border border-border px-2 py-1 rounded">
-                      {acc.password}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(
-                      Number(acc.createdAt) / 1_000_000,
-                    ).toLocaleDateString("bn-BD")}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Notices Tab ───────────────────────────────────────────────────────────────
-
-interface NoticeForm {
-  title: string;
-  content: string;
-  isActive: boolean;
-}
-
-function NoticesTab() {
-  const { data: notices, isLoading } = useGetAllNotices();
-  const addNotice = useAddNotice();
-  const updateNotice = useUpdateNotice();
-  const deleteNotice = useDeleteNotice();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Notice | null>(null);
-  const [form, setForm] = useState<NoticeForm>({
-    title: "",
-    content: "",
-    isActive: true,
-  });
-  const [deleteConfirm, setDeleteConfirm] = useState<bigint | null>(null);
-
-  const openAdd = () => {
-    setEditTarget(null);
-    setForm({ title: "", content: "", isActive: true });
-    setDialogOpen(true);
-  };
-
-  const openEdit = (n: Notice) => {
-    setEditTarget(n);
-    setForm({ title: n.title, content: n.content, isActive: n.isActive });
-    setDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) return;
-    try {
-      if (editTarget) {
-        await updateNotice.mutateAsync({
-          id: editTarget.id,
-          title: form.title,
-          content: form.content,
-          isActive: form.isActive,
-        });
-        toast.success("নোটিশ আপডেট হয়েছে");
-      } else {
-        await addNotice.mutateAsync({
-          title: form.title,
-          content: form.content,
-        });
-        toast.success("নোটিশ যোগ হয়েছে");
-      }
-      setDialogOpen(false);
-    } catch {
-      toast.error("ত্রুটি হয়েছে");
-    }
-  };
-
-  const handleDelete = async (id: bigint) => {
-    try {
-      await deleteNotice.mutateAsync(id);
-      toast.success("নোটিশ মুছে ফেলা হয়েছে");
-    } catch {
-      toast.error("ত্রুটি হয়েছে");
-    }
-    setDeleteConfirm(null);
-  };
-
-  const isMutating =
-    addNotice.isPending || updateNotice.isPending || deleteNotice.isPending;
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
-          মোট নোটিশ: {notices?.length ?? 0}
-        </h3>
-        <Button
-          size="sm"
-          onClick={openAdd}
-          className="bg-primary font-display neon-glow-purple min-h-[44px]"
-          data-ocid="admin.primary_button"
-        >
-          <Plus size={16} className="mr-1" />
-          নোটিশ যোগ করুন
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div
-          className="flex justify-center py-12"
-          data-ocid="admin.loading_state"
-        >
-          <Loader2 className="animate-spin text-primary" size={32} />
-        </div>
-      ) : !notices || notices.length === 0 ? (
-        <div
-          className="text-center py-12 text-muted-foreground"
-          data-ocid="admin.empty_state"
-        >
-          <p>কোনো নোটিশ নেই। নতুন নোটিশ যোগ করুন।</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {notices.map((notice, i) => (
-            <div
-              key={String(notice.id)}
-              className="rounded-xl border border-border bg-card p-4"
-              data-ocid={`admin.item.${i + 1}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <p className="font-display font-bold text-sm truncate">
-                      {notice.title}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs shrink-0 ${
-                        notice.isActive
-                          ? "border-green-500 text-green-400"
-                          : "border-muted text-muted-foreground"
-                      }`}
-                    >
-                      {notice.isActive ? "সক্রিয়" : "নিষ্ক্রিয়"}
-                    </Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {notice.content}
-                  </p>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => openEdit(notice)}
-                    className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                    data-ocid={`admin.edit_button.${i + 1}`}
-                  >
-                    <Edit size={14} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleteConfirm(notice.id)}
-                    className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                    data-ocid={`admin.delete_button.${i + 1}`}
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent
-          className="bg-card border-border text-foreground max-w-md"
-          data-ocid="admin.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              {editTarget ? "নোটিশ সম্পাদনা" : "নতুন নোটিশ"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-sm">শিরোনাম</Label>
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="নোটিশের শিরোনাম"
-                className="bg-secondary border-border mt-1"
-                data-ocid="admin.input"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">বিষয়বস্তু</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, content: e.target.value }))
-                }
-                placeholder="নোটিশের বিষয়বস্তু লিখুন..."
-                className="bg-secondary border-border mt-1 min-h-[100px]"
-                data-ocid="admin.textarea"
-              />
-            </div>
-            {editTarget && (
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">সক্রিয় করুন</Label>
-                <Switch
-                  checked={form.isActive}
-                  onCheckedChange={(v) =>
-                    setForm((f) => ({ ...f, isActive: v }))
-                  }
-                  data-ocid="admin.switch"
-                />
-              </div>
-            )}
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              className="flex-1"
-              data-ocid="admin.cancel_button"
-            >
-              বাতিল
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={
-                !form.title.trim() || !form.content.trim() || isMutating
-              }
-              className="flex-1 bg-primary font-bold neon-glow-purple"
-              data-ocid="admin.save_button"
-            >
-              {isMutating ? (
-                <Loader2 size={16} className="animate-spin mr-1" />
-              ) : null}
-              সংরক্ষণ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
-      <Dialog
-        open={deleteConfirm !== null}
-        onOpenChange={() => setDeleteConfirm(null)}
-      >
-        <DialogContent
-          className="bg-card border-border text-foreground max-w-sm"
-          data-ocid="admin.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-display text-destructive">
-              নোটিশ মুছুন
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-muted-foreground text-sm">
-            এই নোটিশটি মুছে ফেলতে চান?
-          </p>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm(null)}
-              className="flex-1"
-              data-ocid="admin.cancel_button"
-            >
-              বাতিল
-            </Button>
-            <Button
-              onClick={() =>
-                deleteConfirm !== null && handleDelete(deleteConfirm)
-              }
-              disabled={deleteNotice.isPending}
-              className="flex-1 bg-destructive text-destructive-foreground font-bold"
-              data-ocid="admin.confirm_button"
-            >
-              {deleteNotice.isPending ? (
-                <Loader2 size={16} className="animate-spin mr-1" />
-              ) : null}
-              মুছুন
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// ── Posts Tab ─────────────────────────────────────────────────────────────────
-
-interface PostForm {
-  title: string;
-  content: string;
-  imageUrl: string;
-}
-
-function PostsTab() {
-  const { data: posts, isLoading } = useGetAllPosts();
-  const addPost = useAddPost();
-  const updatePost = useUpdatePost();
-  const deletePost = useDeletePost();
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editTarget, setEditTarget] = useState<Post | null>(null);
-  const [form, setForm] = useState<PostForm>({
-    title: "",
-    content: "",
-    imageUrl: "",
-  });
-  const [deleteConfirm, setDeleteConfirm] = useState<bigint | null>(null);
-
-  const openAdd = () => {
-    setEditTarget(null);
-    setForm({ title: "", content: "", imageUrl: "" });
-    setDialogOpen(true);
-  };
-
-  const openEdit = (p: Post) => {
-    setEditTarget(p);
-    setForm({ title: p.title, content: p.content, imageUrl: p.imageUrl });
-    setDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!form.title.trim() || !form.content.trim()) return;
-    try {
-      if (editTarget) {
-        await updatePost.mutateAsync({
-          id: editTarget.id,
-          title: form.title,
-          content: form.content,
-          imageUrl: form.imageUrl,
-        });
-        toast.success("পোস্ট আপডেট হয়েছে");
-      } else {
-        await addPost.mutateAsync({
-          title: form.title,
-          content: form.content,
-          imageUrl: form.imageUrl,
-        });
-        toast.success("পোস্ট যোগ হয়েছে");
-      }
-      setDialogOpen(false);
-    } catch {
-      toast.error("ত্রুটি হয়েছে");
-    }
-  };
-
-  const handleDelete = async (id: bigint) => {
-    try {
-      await deletePost.mutateAsync(id);
-      toast.success("পোস্ট মুছে ফেলা হয়েছে");
-    } catch {
-      toast.error("ত্রুটি হয়েছে");
-    }
-    setDeleteConfirm(null);
-  };
-
-  const isMutating =
-    addPost.isPending || updatePost.isPending || deletePost.isPending;
-
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-3">
-        <h3 className="font-display font-bold text-sm text-muted-foreground uppercase tracking-wider">
-          মোট পোস্ট: {posts?.length ?? 0}
-        </h3>
-        <Button
-          size="sm"
-          onClick={openAdd}
-          className="bg-primary font-display neon-glow-purple min-h-[44px]"
-          data-ocid="admin.primary_button"
-        >
-          <Plus size={16} className="mr-1" />
-          পোস্ট যোগ করুন
-        </Button>
-      </div>
-
-      {isLoading ? (
-        <div
-          className="flex justify-center py-12"
-          data-ocid="admin.loading_state"
-        >
-          <Loader2 className="animate-spin text-primary" size={32} />
-        </div>
-      ) : !posts || posts.length === 0 ? (
-        <div
-          className="text-center py-12 text-muted-foreground"
-          data-ocid="admin.empty_state"
-        >
-          <p>কোনো পোস্ট নেই। নতুন পোস্ট যোগ করুন।</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {posts.map((post, i) => (
-            <div
-              key={String(post.id)}
-              className="rounded-xl border border-border bg-card overflow-hidden"
-              data-ocid={`admin.item.${i + 1}`}
-            >
-              {post.imageUrl && (
-                <img
-                  src={post.imageUrl}
-                  alt={post.title}
-                  className="w-full h-32 object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              )}
-              <div className="p-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display font-bold text-sm">
-                      {post.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {post.content}
-                    </p>
-                  </div>
-                  <div className="flex gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => openEdit(post)}
-                      className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
-                      data-ocid={`admin.edit_button.${i + 1}`}
-                    >
-                      <Edit size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteConfirm(post.id)}
-                      className="p-2 rounded-lg hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors"
-                      data-ocid={`admin.delete_button.${i + 1}`}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add/Edit Dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent
-          className="bg-card border-border text-foreground max-w-md"
-          data-ocid="admin.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-display">
-              {editTarget ? "পোস্ট সম্পাদনা" : "নতুন পোস্ট"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label className="text-sm">শিরোনাম</Label>
-              <Input
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="পোস্টের শিরোনাম"
-                className="bg-secondary border-border mt-1"
-                data-ocid="admin.input"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">বিষয়বস্তু</Label>
-              <Textarea
-                value={form.content}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, content: e.target.value }))
-                }
-                placeholder="পোস্টের বিষয়বস্তু লিখুন..."
-                className="bg-secondary border-border mt-1 min-h-[100px]"
-                data-ocid="admin.textarea"
-              />
-            </div>
-            <div>
-              <Label className="text-sm">ছবির URL (ঐচ্ছিক)</Label>
-              <Input
-                value={form.imageUrl}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, imageUrl: e.target.value }))
-                }
-                placeholder="https://..."
-                className="bg-secondary border-border mt-1 font-mono text-xs"
-                data-ocid="admin.input"
-              />
-            </div>
-          </div>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDialogOpen(false)}
-              className="flex-1"
-              data-ocid="admin.cancel_button"
-            >
-              বাতিল
-            </Button>
-            <Button
-              onClick={handleSave}
-              disabled={
-                !form.title.trim() || !form.content.trim() || isMutating
-              }
-              className="flex-1 bg-primary font-bold neon-glow-purple"
-              data-ocid="admin.save_button"
-            >
-              {isMutating ? (
-                <Loader2 size={16} className="animate-spin mr-1" />
-              ) : null}
-              সংরক্ষণ
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirm */}
-      <Dialog
-        open={deleteConfirm !== null}
-        onOpenChange={() => setDeleteConfirm(null)}
-      >
-        <DialogContent
-          className="bg-card border-border text-foreground max-w-sm"
-          data-ocid="admin.dialog"
-        >
-          <DialogHeader>
-            <DialogTitle className="font-display text-destructive">
-              পোস্ট মুছুন
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-muted-foreground text-sm">
-            এই পোস্টটি মুছে ফেলতে চান?
-          </p>
-          <DialogFooter className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteConfirm(null)}
-              className="flex-1"
-              data-ocid="admin.cancel_button"
-            >
-              বাতিল
-            </Button>
-            <Button
-              onClick={() =>
-                deleteConfirm !== null && handleDelete(deleteConfirm)
-              }
-              disabled={deletePost.isPending}
-              className="flex-1 bg-destructive text-destructive-foreground font-bold"
-              data-ocid="admin.confirm_button"
-            >
-              {deletePost.isPending ? (
-                <Loader2 size={16} className="animate-spin mr-1" />
-              ) : null}
-              মুছুন
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-// ── Transactions Tab ──────────────────────────────────────────────────────────
+// ── Transactions Tab ──────────────────────────────────────────────────────────────
 
 function TransactionsTab() {
   const transactions = getTransactions();
-
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -1427,9 +1412,6 @@ function SettingsTab() {
             className="bg-secondary border-border font-mono text-xs h-11"
             data-ocid="admin.input"
           />
-          <p className="text-xs text-muted-foreground">
-            Stripe ড্যাশবোর্ড থেকে আপনার পাবলিশেবল কী পাবেন।
-          </p>
         </div>
         <Button
           onClick={handleSave}
@@ -1442,20 +1424,125 @@ function SettingsTab() {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-4 space-y-2">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="text-xl">🔑</span>
-          <h3 className="font-display font-bold">অ্যাডমিন পাসওয়ার্ড</h3>
+        <h3 className="font-display font-bold">অ্যাপ তথ্য</h3>
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>
+            🔐 এডমিন পাসওয়ার্ড:{" "}
+            <span className="font-mono text-foreground">admin123</span>
+          </p>
+          <p>🎮 প্রতি ৮ সঠিক = +৳১০ বোনাস</p>
+          <p>❌ প্রতি ভুল = -৳২ কাটা</p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          বর্তমান পাসওয়ার্ড:{" "}
-          <span className="text-foreground font-mono bg-secondary px-2 py-0.5 rounded text-xs">
-            admin123
-          </span>
-        </p>
-        <p className="text-xs text-muted-foreground">
-          পাসওয়ার্ড পরিবর্তন করতে ডেভেলপারের সাথে যোগাযোগ করুন।
-        </p>
       </div>
+    </div>
+  );
+}
+
+function LinkedAccountsAdminTab() {
+  const [accounts, setAccounts] = useState(() => getAllLinkedAccounts());
+  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  const refresh = () => setAccounts(getAllLinkedAccounts());
+
+  const togglePassword = (id: string) => {
+    setShowPasswords((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const platformLabels: Record<PlatformType, string> = {
+    facebook: "Facebook",
+    telegram: "Telegram",
+    email: "Email",
+    binance: "Binance",
+    kucoin: "KuCoin",
+  };
+
+  const platformColors: Record<PlatformType, string> = {
+    facebook: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    telegram: "bg-sky-500/20 text-sky-400 border-sky-500/30",
+    email: "bg-red-500/20 text-red-400 border-red-500/30",
+    binance: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
+    kucoin: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display font-bold text-base">🔗 যুক্ত একাউন্ট</h2>
+          <p className="text-xs text-muted-foreground">
+            মোট: {accounts.length} টি একাউন্ট
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={refresh}
+          className="font-display text-xs"
+        >
+          🔄 রিফ্রেশ
+        </Button>
+      </div>
+
+      {accounts.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground font-display text-sm">
+          এখনো কোনো একাউন্ট যোগ হয়নি
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map((acc) => (
+            <div
+              key={acc.id}
+              className="bg-card border border-border rounded-xl p-3 space-y-2"
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`text-xs font-bold px-2 py-0.5 rounded-full border ${platformColors[acc.platform as PlatformType]}`}
+                >
+                  {platformLabels[acc.platform as PlatformType] || acc.platform}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(acc.addedAt).toLocaleDateString("bn-BD")}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-20">
+                    ইউজার/ইমেইল:
+                  </span>
+                  <span className="text-xs font-mono text-foreground">
+                    {acc.username}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-20">
+                    পাসওয়ার্ড:
+                  </span>
+                  <span className="text-xs font-mono text-foreground">
+                    {showPasswords[acc.id] ? acc.password : "••••••••"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => togglePassword(acc.id)}
+                    className="text-xs text-primary underline"
+                  >
+                    {showPasswords[acc.id] ? "লুকান" : "দেখুন"}
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-20">
+                    ইউজার আইডি:
+                  </span>
+                  <span className="text-xs font-mono text-muted-foreground">
+                    {acc.userId}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

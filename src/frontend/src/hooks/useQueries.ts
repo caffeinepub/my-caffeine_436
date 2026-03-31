@@ -1,7 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Language, Question, ScoreEntry } from "../backend";
 import { getAllUsers } from "../lib/auth";
-import type { Notice, Post, UserAccount } from "../lib/types";
+import {
+  addNotice,
+  deleteNotice as deleteNoticeLocal,
+  getActiveNotices,
+  getNotices,
+  updateNotice,
+} from "../lib/notices";
+import {
+  addPost,
+  deletePost as deletePostLocal,
+  getPosts,
+  updatePost,
+} from "../lib/posts";
+import { addScore, getTopScores } from "../lib/scores";
+import type { UserAccount } from "../lib/types";
 import { useActor } from "./useActor";
 
 export function useGetAllQuestions() {
@@ -31,31 +45,56 @@ export function useGetQuestionsByCategoryAndLanguage(
   });
 }
 
-export function useGetLeaderboard() {
-  const { actor, isFetching } = useActor();
-  return useQuery<ScoreEntry[]>({
-    queryKey: ["leaderboard"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getLeaderboard();
-    },
-    enabled: !!actor && !isFetching,
+// ── Leaderboard (localStorage) ────────────────────────────────────────────────
+
+export interface LocalScoreEntry {
+  id: number;
+  playerName: string;
+  score: number;
+  total: number;
+  category: string;
+  timestamp: number;
+}
+
+export function useGetLeaderboard(category?: string) {
+  return useQuery<LocalScoreEntry[]>({
+    queryKey: ["leaderboard", category ?? "All"],
+    queryFn: () => getTopScores(20, category),
+    staleTime: 0,
   });
 }
 
 export function useGetLeaderboardByCategory(category: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery<ScoreEntry[]>({
+  return useQuery<LocalScoreEntry[]>({
     queryKey: ["leaderboard", category],
-    queryFn: async () => {
-      if (!actor) return [];
-      if (category === "All") return actor.getLeaderboard();
-      return actor.getLeaderboardByCategory(category);
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getTopScores(20, category),
+    staleTime: 0,
   });
 }
 
+export function useSubmitLocalScore() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      playerName,
+      score,
+      total,
+      category,
+    }: {
+      playerName: string;
+      score: number;
+      total: number;
+      category: string;
+    }) => {
+      return addScore(playerName, score, total, category);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+  });
+}
+
+// Keep for backward compat
 export function useSubmitScore() {
   const { actor } = useActor();
   const qc = useQueryClient();
@@ -125,42 +164,40 @@ export function useVerifyAdminPassword() {
   });
 }
 
-// ── Notices ────────────────────────────────────────────────────────────────────────────
+// ── Notices (localStorage) ─────────────────────────────────────────────────────
+
+export interface LocalNotice {
+  id: number;
+  title: string;
+  content: string;
+  isActive: boolean;
+  createdAt: number;
+}
 
 export function useGetActiveNotices() {
-  const { actor, isFetching } = useActor();
-  return useQuery<Notice[]>({
+  return useQuery<LocalNotice[]>({
     queryKey: ["activeNotices"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as any).getActiveNotices();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getActiveNotices(),
+    staleTime: 0,
   });
 }
 
 export function useGetAllNotices() {
-  const { actor, isFetching } = useActor();
-  return useQuery<Notice[]>({
+  return useQuery<LocalNotice[]>({
     queryKey: ["allNotices"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as any).getAllNotices("admin123");
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getNotices(),
+    staleTime: 0,
   });
 }
 
 export function useAddNotice() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
       title,
       content,
     }: { title: string; content: string }) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).addNotice("admin123", title, content);
+      return addNotice(title, content);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allNotices"] });
@@ -170,7 +207,6 @@ export function useAddNotice() {
 }
 
 export function useUpdateNotice() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -179,19 +215,12 @@ export function useUpdateNotice() {
       content,
       isActive,
     }: {
-      id: bigint;
+      id: number;
       title: string;
       content: string;
       isActive: boolean;
     }) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).updateNotice(
-        "admin123",
-        id,
-        title,
-        content,
-        isActive,
-      );
+      updateNotice(id, { title, content, isActive });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allNotices"] });
@@ -201,12 +230,10 @@ export function useUpdateNotice() {
 }
 
 export function useDeleteNotice() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: bigint) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).deleteNotice("admin123", id);
+    mutationFn: async (id: number) => {
+      deleteNoticeLocal(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allNotices"] });
@@ -215,34 +242,33 @@ export function useDeleteNotice() {
   });
 }
 
-// ── Posts ───────────────────────────────────────────────────────────────────────────────
+// ── Posts (localStorage) ───────────────────────────────────────────────────────
+
+export interface LocalPost {
+  id: number;
+  title: string;
+  content: string;
+  imageUrl: string;
+  createdAt: number;
+}
 
 export function useGetActivePosts() {
-  const { actor, isFetching } = useActor();
-  return useQuery<Post[]>({
+  return useQuery<LocalPost[]>({
     queryKey: ["activePosts"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as any).getActivePosts();
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getPosts(),
+    staleTime: 0,
   });
 }
 
 export function useGetAllPosts() {
-  const { actor, isFetching } = useActor();
-  return useQuery<Post[]>({
+  return useQuery<LocalPost[]>({
     queryKey: ["allPosts"],
-    queryFn: async () => {
-      if (!actor) return [];
-      return (actor as any).getAllPosts("admin123");
-    },
-    enabled: !!actor && !isFetching,
+    queryFn: () => getPosts(),
+    staleTime: 0,
   });
 }
 
 export function useAddPost() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -254,8 +280,7 @@ export function useAddPost() {
       content: string;
       imageUrl: string;
     }) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).addPost("admin123", title, content, imageUrl);
+      return addPost(title, content, imageUrl);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allPosts"] });
@@ -265,7 +290,6 @@ export function useAddPost() {
 }
 
 export function useUpdatePost() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({
@@ -274,19 +298,12 @@ export function useUpdatePost() {
       content,
       imageUrl,
     }: {
-      id: bigint;
+      id: number;
       title: string;
       content: string;
       imageUrl: string;
     }) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).updatePost(
-        "admin123",
-        id,
-        title,
-        content,
-        imageUrl,
-      );
+      updatePost(id, { title, content, imageUrl });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allPosts"] });
@@ -296,12 +313,10 @@ export function useUpdatePost() {
 }
 
 export function useDeletePost() {
-  const { actor } = useActor();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: bigint) => {
-      if (!actor) throw new Error("No actor");
-      return (actor as any).deletePost("admin123", id);
+    mutationFn: async (id: number) => {
+      deletePostLocal(id);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["allPosts"] });
@@ -310,12 +325,13 @@ export function useDeletePost() {
   });
 }
 
-// ── User Accounts (localStorage-based) ─────────────────────────────────────────────
+// ── User Accounts (localStorage) ──────────────────────────────────────────────
 
 export function useGetAllUserAccounts() {
   return useQuery<UserAccount[]>({
     queryKey: ["allUserAccounts"],
     queryFn: () => getAllUsers(),
     staleTime: 0,
+    refetchInterval: 3000, // auto-refresh every 3s
   });
 }
