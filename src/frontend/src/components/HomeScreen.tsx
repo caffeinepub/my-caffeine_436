@@ -13,6 +13,7 @@ import { useGetActiveNotices, useGetActivePosts } from "../hooks/useQueries";
 import { getDisplayName } from "../lib/auth";
 import { CATEGORIES, type Lang, getCategoryLabel, t } from "../lib/i18n";
 import { playClick } from "../lib/sounds";
+import InviteSection from "./InviteSection";
 import LinkedAccountsSection from "./LinkedAccountsSection";
 import WithdrawTicker from "./WithdrawTicker";
 
@@ -351,6 +352,9 @@ export default function HomeScreen({
           userId={username || "guest"}
           onBalanceChange={onDeposit}
         />
+
+        {/* Invite Section */}
+        <InviteSection />
 
         {/* Post / News Feed */}
         {hasPosts && (
